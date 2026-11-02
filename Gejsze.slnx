@@ -1,2 +1,5 @@
 <Solution>
+  <Project Path="Gejsze.AI/Gejsze.AI.csproj" />
+  <Project Path="Gejsze.Console/Gejsze.Console.csproj" />
+  <Project Path="Gejsze.Engine/Gejsze.Engine.csproj" />
 </Solution>
