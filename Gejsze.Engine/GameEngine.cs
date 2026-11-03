@@ -10,6 +10,8 @@ public sealed class GameEngine
 {
     private readonly Random _random;
 
+    private readonly ActionResolver _actionResolver;
+
     public int Seed { get; }
 
     public GameState State { get; }
@@ -22,6 +24,7 @@ public sealed class GameEngine
         Seed = seed;
         _random = new Random(seed);
         State = new GameState();
+        _actionResolver = new ActionResolver(State);
     }
 
     public void StartGame()
@@ -115,45 +118,72 @@ public sealed class GameEngine
 
         // Start resolving the action.
         State.CurrentAction = context;
-        ResolveCurrentAction();
+        _actionResolver.ResolveAction(State.CurrentAction);
     }
 
     public void SubmitDecision(PlayerDecision decision)
     {
-        // TODO:
-        // 1. Verify that a decision is pending.
-        // 2. Verify that decision.Player is the player
-        //    expected to make the decision.
-        // 3. Validate the submitted card IDs.
-        // 4. Apply the decision to the current action.
-        // 5. Either request another decision or finish the action.
+        PendingDecision pending = State.PendingDecision
+            ?? throw new InvalidOperationException("No decision is pending.");
 
-        throw new NotImplementedException();
-    }
+        ActionContext context = State.CurrentAction
+            ?? throw new InvalidOperationException("No action is in progress.");
 
-    private void ResolveCurrentAction()
-    {
-        // TODO:
-        // Resolve the effects of the current action.
-        // This may include changing hands, discarding cards,
-        // playing cards, and changing scores.
+        if (decision.Player != pending.Player)
+            throw new InvalidOperationException("Wrong player.");
+
+        if (decision.SelectedCardIds.Count < pending.MinimumSelections ||
+            decision.SelectedCardIds.Count > pending.MaximumSelections)
+            throw new InvalidOperationException("Invalid number of cards.");
+
+        if (decision.SelectedCardIds.Distinct().Count() != decision.SelectedCardIds.Count)
+            throw new InvalidOperationException("Duplicate card selections.");
+
+        if (decision.SelectedCardIds.Any(id => !pending.AvailableCardIds.Contains(id)))
+            throw new InvalidOperationException("Invalid card selection.");
+
+        State.PendingDecision = null;
+
+        _actionResolver.ResolveDecision(context, decision);
+
+        FinishAction();
     }
 
     private void FinishAction()
     {
-        // TODO:
-        // 1. Clear CurrentAction and PendingDecision.
-        // 2. Check whether the round is complete.
-        // 3. If not, switch to the other player.
-        // 4. If the round is complete, start the next round
-        //    or finish the game.
+        State.CurrentAction = null;
+        State.PendingDecision = null;
+
+        // Check whether both players have completed all four actions.
+        bool roundComplete =
+            State.Player1.UsedActions.Count == 4 &&
+            State.Player2.UsedActions.Count == 4;
+
+        if (roundComplete)
+        {
+            State.Status = GameStatus.Finished;
+            return;
+        }
+
+        // Switch to the other player.
+        State.CurrentPlayer = State.GetOpponent(State.CurrentPlayer).Id;
+
+        State.TurnNumber++;
     }
 
     private void StartNextRound()
     {
-        // TODO:
-        // Reset each player's UsedActions.
-        // Prepare the next round according to your rules.
+        State.Player1.UsedActions.Clear();
+        State.Player2.UsedActions.Clear();
+
+        State.CurrentPlayer = PlayerId.Player1;
+        State.TurnNumber = 1;
+
+        // Prepare the next round here:
+        // 1. Clear the cards played this round.
+        // 2. Shuffle and prepare the deck.
+        // 3. Remove one random card.
+        // 4. Deal six cards to each player.
     }
 
     private void InitDeck()

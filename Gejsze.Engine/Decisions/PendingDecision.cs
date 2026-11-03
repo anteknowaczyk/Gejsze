@@ -2,12 +2,6 @@ using Gejsze.Engine.Game;
 
 namespace Gejsze.Engine.Decisions;
 
-public enum DecisionType
-{
-    SelectCards,
-    ChooseDiscardAndPlay
-}
-
 public sealed class PendingDecision
 {
     public PlayerId Player { get; }
